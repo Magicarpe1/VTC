@@ -184,46 +184,18 @@
     const options = { types: ['geocode'], componentRestrictions: { country: 'fr' } };
     autocompleteDepart = new google.maps.places.Autocomplete(document.getElementById('autocomplete_depart'), options);
     autocompleteDestination = new google.maps.places.Autocomplete(document.getElementById('autocomplete_destination'), options);
-  }
 
-  function estimerPrix() {
-    const depart = document.getElementById('autocomplete_depart').value;
-    const destination = document.getElementById('autocomplete_destination').value;
-    const prixEstime = document.getElementById('prixEstime');
-
-    if (!depart || !destination) {
-      prixEstime.textContent = "Veuillez saisir les lieux de départ et de destination.";
-      prixEstime.style.display = "block";
+    autocompleteDepart.addListener('place_changed', () => {
+      estimerPrix();
       verifierFormulaire();
-      return;
-    }
+    });
 
-    const directionsService = new google.maps.DirectionsService();
-    directionsService.route({
-      origin: depart,
-      destination: destination,
-      travelMode: google.maps.TravelMode.DRIVING,
-    }, (response, status) => {
-      if (status === 'OK') {
-        const distanceEnMetres = response.routes[0].legs[0].distance.value;
-        const distanceEnKm = distanceEnMetres / 1000;
-
-        let prixTotal;
-        if (distanceEnKm < 4) {
-          prixTotal = 10;
-        } else {
-          prixTotal = distanceEnKm * 2.5;
-        }
-
-        prixEstime.textContent = `Distance : ${distanceEnKm.toFixed(1)} km | Prix : ${prixTotal.toFixed(2)} €`;
-        prixEstime.style.display = "block";
-      } else {
-        prixEstime.textContent = "Erreur lors du calcul";
-        prixEstime.style.display = "block";
-      }
+    autocompleteDestination.addListener('place_changed', () => {
+      estimerPrix();
       verifierFormulaire();
     });
   }
+
 
   function verifierFormulaire() {
   const depart = document.getElementById('autocomplete_depart').value.trim();
@@ -248,7 +220,8 @@ function estimerPrix() {
   const prixEstime = document.getElementById('prixEstime');
 
   if (!depart || !destination) {
-    prixEstime.style.display = "none";
+    prixEstime.textContent = "Veuillez saisir les lieux de départ et de destination.";
+    prixEstime.style.display = "block";
     verifierFormulaire();
     return;
   }
