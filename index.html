@@ -13,10 +13,12 @@
     .pac-item:hover{background-color:#333!important;}
     .pac-icon{filter: invert(100%) brightness(80%);}
     .pac-item,.pac-item-query,.pac-item span{color:#FFF!important;}
-    input[type="date"],input[type="time"],input[type="text"],input[type="tel"]{color-scheme:dark;background:#262626;color:#FFF;width:100%;margin-top:8px;padding:10px 15px;border-radius:8px;border:none;box-sizing:border-box;transition:box-shadow .2s;}
+    input[type="date"],input[type="time"],input[type="text"],input[type="tel"]{
+      color-scheme:dark;background:#262626;color:#FFF;width:100%;margin-top:8px;padding:10px 15px;
+      border-radius:8px;border:none;box-sizing:border-box;transition:box-shadow .2s, outline .2s;
+    }
     ::-webkit-calendar-picker-indicator{filter: invert(1); cursor:pointer;}
     .label-with-icon{display:flex;align-items:center;gap:5px;}
-    .icon-svg{width:20px;height:20px;vertical-align:middle;fill:currentColor;}
     .preset-btn{flex:1;font-size:12px;padding:6px;text-align:center;background:#262626;color:#FFF;border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;transition:background .3s;}
     .preset-btn:hover{background:#333;}
     .container{background:#1A1A1A;border-radius:12px;padding:30px;max-width:1100px;margin:auto;box-sizing:border-box;}
@@ -35,20 +37,30 @@
     .pmr-toggle {display:inline-flex;align-items:center;gap:8px;background:#262626;color:#fff;border:1px solid rgba(255,255,255,.15);padding:10px 14px;border-radius:8px;cursor:pointer;user-select:none;transition:background .2s, box-shadow .2s, transform .1s;}
     .pmr-toggle.active {background:#2f2f2f;box-shadow:0 0 0 2px rgba(255,204,0,.25) inset;color:#ffcc00;}
 
-    /* Prix : rester sur 1 ligne */
-    #prixEstime{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+    /* Ligne des actions : prix + bouton (nowrap) */
+    .bar {display:flex;align-items:center;gap:15px;flex-wrap:nowrap}
+    #prixEstime{
+      color:#FFF;font-weight:bold;background-color:#262626;padding:10px 15px;border-radius:6px;display:none;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;
+    }
 
     /* Guard au-dessus du bouton quand disabled (pour capter le clic) */
     .btn-wrap{position:relative;display:inline-block}
     #btn-guard{position:absolute;inset:0;border-radius:6px;display:none}
     .btn-primary[disabled] + #btn-guard{display:block;cursor:not-allowed}
 
-    /* Feedback visuel */
+    /* Feedback visuel simple */
     .invalid{outline:2px solid #ff5757; box-shadow:0 0 0 3px rgba(255,87,87,.25);}
     @keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
     .shake{animation:shake .35s linear}
-    .hint{font-size:12px;color:#ffcc00;display:none}
-    .form-incomplete .hint{display:inline}
+
+    /* Conteneur des 3 blocs (tel | personnes+pmr | actions) */
+    .controls-row{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:nowrap}
+    @media (max-width: 720px){
+      .controls-row{flex-wrap:wrap}
+      .bar{flex-wrap:wrap}
+      #prixEstime{flex:unset;width:100%}
+    }
   </style>
 </head>
 
@@ -101,7 +113,8 @@
     <div style="color:#AAA;">Passagers : 9</div>
   </div>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:25px;gap:15px;flex-wrap:wrap;">
+  <!-- Ligne: téléphone | personnes+PMR | prix + bouton -->
+  <div class="controls-row" style="margin-top:25px;">
     <!-- Téléphone -->
     <div style="display:flex;align-items:center;gap:8px;">
       <img src="https://ik.imagekit.io/lakolo/pngwing.com%20(6).png?updatedAt=1748077033496" alt="Téléphone" style="width:24px;height:24px;">
@@ -109,7 +122,7 @@
     </div>
 
     <!-- Personnes + PMR -->
-    <div style="display:flex;align-items:center;font-size:16px;gap:12px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;font-size:16px;gap:12px;flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:8px;">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="#FFF">
           <path d="M117.25 157.92a60 60 0 1 0-66.5 0a95.83 95.83 0 0 0-47.22 37.71a8 8 0 1 0 13.4 8.74a80 80 0 0 1 134.14 0a8 8 0 0 0 13.4-8.74a95.83 95.83 0 0 0-47.22-37.71M40 108a44 44 0 1 1 44 44a44.05 44.05 0 0 1-44-44m210.14 98.7a8 8 0 0 1-11.07-2.33A79.83 79.83 0 0 0 172 168a8 8 0 0 1 0-16a44 44 0 1 0-16.34-84.87a8 8 0 1 1-5.94-14.85a60 60 0 0 1 55.53 105.64a95.83 95.83 0 0 1 47.22 37.71a8 8 0 0 1-2.33 11.07"/>
@@ -118,20 +131,15 @@
         <span id="nombre-personnes">1</span>
         <button id="btn-plus" style="margin:0 10px;width:30px;height:30px;border-radius:50%;border:none;background:#262626;color:#FFF;">+</button>
       </div>
-
       <button id="pmr-btn" class="pmr-toggle" type="button" aria-pressed="false" title="Supplément PMR +10€">♿ PMR</button>
     </div>
 
-    <!-- Prix + bouton (avec guard + hint) -->
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div id="prixEstime" style="color:#FFF;font-weight:bold;background-color:#262626;padding:10px 15px;border-radius:6px;display:none;"></div>
-
-      <div class="btn-and-hint" style="display:flex;align-items:center;gap:8px;">
-        <div class="btn-wrap">
-          <button id="btn-reserver" disabled class="btn-primary">RÉSERVER</button>
-          <div id="btn-guard" aria-hidden="true"></div>
-        </div>
-        <span id="hint" class="hint">Complétez départ, destination, date, heure, téléphone.</span>
+    <!-- Prix + bouton -->
+    <div class="bar" style="flex:1;">
+      <div id="prixEstime"></div>
+      <div class="btn-wrap" style="flex-shrink:0;">
+        <button id="btn-reserver" disabled class="btn-primary">RÉSERVER</button>
+        <div id="btn-guard" aria-hidden="true"></div>
       </div>
     </div>
   </div>
@@ -225,7 +233,7 @@
 
         let prixTotal;
         if (parisStart && parisEnd) {
-          prixTotal = 30;
+          prixTotal = 30; // forfait Paris->Paris
         } else {
           prixTotal = distanceEnKm < 4 ? 10 : distanceEnKm * 2.5;
         }
@@ -243,11 +251,11 @@
 
   function missingFields(){
     const fields = [
-      {el: document.getElementById('autocomplete_depart'), id:'depart'},
-      {el: document.getElementById('autocomplete_destination'), id:'destination'},
-      {el: document.getElementById('date'), id:'date'},
-      {el: document.getElementById('heure'), id:'heure'},
-      {el: document.getElementById('telephone'), id:'telephone'},
+      {el: document.getElementById('autocomplete_depart')},
+      {el: document.getElementById('autocomplete_destination')},
+      {el: document.getElementById('date')},
+      {el: document.getElementById('heure')},
+      {el: document.getElementById('telephone')},
     ];
     return fields.filter(f => !f.el.value.trim());
   }
@@ -255,12 +263,10 @@
   function flashMissing(){
     const btn = document.getElementById('btn-reserver');
     btn.classList.add('shake');
-
     const misses = missingFields();
     misses.forEach(f => f.el.classList.add('invalid'));
     const first = misses[0]?.el;
     if (first) first.scrollIntoView({behavior:'smooth', block:'center'});
-
     setTimeout(()=>{ btn.classList.remove('shake'); misses.forEach(f => f.el.classList.remove('invalid')); }, 900);
   }
 
@@ -278,9 +284,6 @@
 
     btnReserver.disabled = !formulaireComplet;
     btnReserver.setAttribute('aria-disabled', !formulaireComplet);
-
-    // Afficher/masquer hint
-    document.getElementById('app').classList.toggle('form-incomplete', !formulaireComplet);
   }
 
   function formatDateFR(isoDate) {
@@ -332,7 +335,7 @@
     });
 
     // Guard: clic sur bouton désactivé => feedback visuel
-    document.getElementById('btn-guard').addEventListener('click', (e) => {
+    document.getElementById('btn-guard').addEventListener('click', () => {
       if (document.getElementById('btn-reserver').disabled) {
         flashMissing();
       }
