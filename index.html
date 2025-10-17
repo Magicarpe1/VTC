@@ -13,7 +13,7 @@
     .pac-item:hover{background-color:#333!important;}
     .pac-icon{filter: invert(100%) brightness(80%);}
     .pac-item,.pac-item-query,.pac-item span{color:#FFF!important;}
-    input[type="date"],input[type="time"],input[type="text"]{color-scheme:dark;background:#262626;color:#FFF;width:100%;margin-top:8px;padding:10px 15px;border-radius:8px;border:none;box-sizing:border-box;}
+    input[type="date"],input[type="time"],input[type="text"],input[type="tel"]{color-scheme:dark;background:#262626;color:#FFF;width:100%;margin-top:8px;padding:10px 15px;border-radius:8px;border:none;box-sizing:border-box;transition:box-shadow .2s;}
     ::-webkit-calendar-picker-indicator{filter: invert(1); cursor:pointer;}
     .label-with-icon{display:flex;align-items:center;gap:5px;}
     .icon-svg{width:20px;height:20px;vertical-align:middle;fill:currentColor;}
@@ -22,22 +22,33 @@
     .container{background:#1A1A1A;border-radius:12px;padding:30px;max-width:1100px;margin:auto;box-sizing:border-box;}
     .row{display:flex;gap:30px;flex-wrap:wrap;}
     .card{background-color:#262626;border-radius:12px;padding:25px;text-align:center;margin-top:25px;}
-    .btn-primary{background-color:#007bff;color:#FFF;border:none;padding:12px 20px;border-radius:6px;cursor:pointer;}
+    .btn-primary{background-color:#007bff;color:#FFF;border:none;padding:12px 20px;border-radius:6px;cursor:pointer;transition:transform .15s, box-shadow .15s;}
     .btn-primary[disabled]{background:#777;color:#CCC;opacity:.6;cursor:not-allowed;}
+
     /* Confirmation */
     #confirmation{display:none;max-width:900px;margin:40px auto;background:#111;border:1px solid #333;border-radius:12px;padding:30px;}
     #confirmation h2{margin-top:0}
     .recap{margin-top:15px;background:#1f1f1f;border-radius:10px;padding:16px;line-height:1.6}
     .recap b{color:#ddd}
 
-    /* Bouton PMR */
-    .pmr-toggle {
-      display:inline-flex; align-items:center; gap:8px;
-      background:#262626; color:#fff; border:1px solid rgba(255,255,255,.15);
-      padding:10px 14px; border-radius:8px; cursor:pointer; user-select:none;
-      transition:background .2s ease, box-shadow .2s ease, transform .1s ease;
-    }
-    .pmr-toggle.active { background:#2f2f2f; box-shadow:0 0 0 2px rgba(255,204,0,.25) inset; color:#ffcc00; }
+    /* PMR */
+    .pmr-toggle {display:inline-flex;align-items:center;gap:8px;background:#262626;color:#fff;border:1px solid rgba(255,255,255,.15);padding:10px 14px;border-radius:8px;cursor:pointer;user-select:none;transition:background .2s, box-shadow .2s, transform .1s;}
+    .pmr-toggle.active {background:#2f2f2f;box-shadow:0 0 0 2px rgba(255,204,0,.25) inset;color:#ffcc00;}
+
+    /* Prix : rester sur 1 ligne */
+    #prixEstime{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+    /* Guard au-dessus du bouton quand disabled (pour capter le clic) */
+    .btn-wrap{position:relative;display:inline-block}
+    #btn-guard{position:absolute;inset:0;border-radius:6px;display:none}
+    .btn-primary[disabled] + #btn-guard{display:block;cursor:not-allowed}
+
+    /* Feedback visuel */
+    .invalid{outline:2px solid #ff5757; box-shadow:0 0 0 3px rgba(255,87,87,.25);}
+    @keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
+    .shake{animation:shake .35s linear}
+    .hint{font-size:12px;color:#ffcc00;display:none}
+    .form-incomplete .hint{display:inline}
   </style>
 </head>
 
@@ -108,15 +119,20 @@
         <button id="btn-plus" style="margin:0 10px;width:30px;height:30px;border-radius:50%;border:none;background:#262626;color:#FFF;">+</button>
       </div>
 
-      <button id="pmr-btn" class="pmr-toggle" type="button" aria-pressed="false" title="Supplément PMR +10€">
-        ♿ PMR
-      </button>
+      <button id="pmr-btn" class="pmr-toggle" type="button" aria-pressed="false" title="Supplément PMR +10€">♿ PMR</button>
     </div>
 
-    <!-- Prix + bouton -->
-    <div style="display:flex;align-items:center;gap:10px;">
+    <!-- Prix + bouton (avec guard + hint) -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div id="prixEstime" style="color:#FFF;font-weight:bold;background-color:#262626;padding:10px 15px;border-radius:6px;display:none;"></div>
-      <button id="btn-reserver" disabled class="btn-primary">RÉSERVER</button>
+
+      <div class="btn-and-hint" style="display:flex;align-items:center;gap:8px;">
+        <div class="btn-wrap">
+          <button id="btn-reserver" disabled class="btn-primary">RÉSERVER</button>
+          <div id="btn-guard" aria-hidden="true"></div>
+        </div>
+        <span id="hint" class="hint">Complétez départ, destination, date, heure, téléphone.</span>
+      </div>
     </div>
   </div>
 </div>
@@ -134,16 +150,12 @@
   let pmrActif = false;
 
   const IDF_DEPS = new Set(['75','77','78','91','92','93','94','95']);
-  const IDF_BBOX = { // filet de sécurité si pas de CP
-    minLat: 48.0, maxLat: 49.5,
-    minLng: 1.4, maxLng: 3.6
-  };
+  const IDF_BBOX = { minLat:48.0, maxLat:49.5, minLng:1.4, maxLng:3.6 };
 
   function initAutocomplete() {
     const options = { types: ['geocode'], componentRestrictions: { country: 'fr' } };
     autocompleteDepart = new google.maps.places.Autocomplete(document.getElementById('autocomplete_depart'), options);
     autocompleteDestination = new google.maps.places.Autocomplete(document.getElementById('autocomplete_destination'), options);
-
     autocompleteDepart.addListener('place_changed', () => { estimerPrix(); verifierFormulaire(); });
     autocompleteDestination.addListener('place_changed', () => { estimerPrix(); verifierFormulaire(); });
   }
@@ -152,30 +164,16 @@
     const cpComp = (components||[]).find(c => c.types.includes('postal_code'));
     return cpComp ? cpComp.long_name : null;
   }
-
-  function isInIDFFromCP(cp){
-    if(!cp || cp.length < 2) return null;
-    return IDF_DEPS.has(cp.substring(0,2));
-  }
-
-  function inBbox(latlng){
-    return latlng.lat() >= IDF_BBOX.minLat && latlng.lat() <= IDF_BBOX.maxLat &&
-           latlng.lng() >= IDF_BBOX.minLng && latlng.lng() <= IDF_BBOX.maxLng;
-  }
-
-  function isParisFromCP(cp){
-    return cp && cp.substring(0,2) === '75';
-  }
+  function isInIDFFromCP(cp){ if(!cp || cp.length<2) return null; return IDF_DEPS.has(cp.substring(0,2)); }
+  function inBbox(latlng){ return latlng.lat()>=IDF_BBOX.minLat && latlng.lat()<=IDF_BBOX.maxLat && latlng.lng()>=IDF_BBOX.minLng && latlng.lng()<=IDF_BBOX.maxLng; }
+  function isParisFromCP(cp){ return cp && cp.substring(0,2)==='75'; }
 
   function reverseGeocode(latlng){
     return new Promise((resolve) => {
       const geocoder = new google.maps.Geocoder();
       geocoder.geocode({ location: latlng }, (results, status) => {
-        if(status === 'OK' && results && results[0]){
-          resolve(results[0].address_components);
-        } else {
-          resolve(null);
-        }
+        if(status === 'OK' && results && results[0]) resolve(results[0].address_components);
+        else resolve(null);
       });
     });
   }
@@ -202,19 +200,16 @@
         const leg = response.routes[0].legs[0];
         const distanceEnKm = leg.distance.value / 1000;
 
-        // Reverse geocode start & end to read CP / région
         const [compStart, compEnd] = await Promise.all([
           reverseGeocode(leg.start_location),
           reverseGeocode(leg.end_location)
         ]);
 
         const cpStart = cpFromComponents(compStart);
-        const cpEnd = cpFromComponents(compEnd);
+        const cpEnd   = cpFromComponents(compEnd);
 
         let inIDFStart = isInIDFFromCP(cpStart);
         let inIDFEnd   = isInIDFFromCP(cpEnd);
-
-        // Fallback bbox
         if (inIDFStart === null) inIDFStart = inBbox(leg.start_location);
         if (inIDFEnd   === null) inIDFEnd   = inBbox(leg.end_location);
 
@@ -225,18 +220,16 @@
           return verifierFormulaire();
         }
 
-        // Paris intra-muros ?
         const parisStart = isParisFromCP(cpStart);
         const parisEnd   = isParisFromCP(cpEnd);
 
         let prixTotal;
         if (parisStart && parisEnd) {
-          prixTotal = 30; // forfait Paris -> Paris
+          prixTotal = 30;
         } else {
-          prixTotal = distanceEnKm < 4 ? 10 : distanceEnKm * 2.5; // logique existante
+          prixTotal = distanceEnKm < 4 ? 10 : distanceEnKm * 2.5;
         }
-
-        if (pmrActif) prixTotal += 10; // supplément PMR
+        if (pmrActif) prixTotal += 10;
 
         prixEstime.textContent = `Distance : ${distanceEnKm.toFixed(1)} km | Prix : ${prixTotal.toFixed(2)} €` + (pmrActif ? " (incl. PMR +10€)" : "");
         prixEstime.style.display = "block";
@@ -246,6 +239,29 @@
       }
       verifierFormulaire();
     });
+  }
+
+  function missingFields(){
+    const fields = [
+      {el: document.getElementById('autocomplete_depart'), id:'depart'},
+      {el: document.getElementById('autocomplete_destination'), id:'destination'},
+      {el: document.getElementById('date'), id:'date'},
+      {el: document.getElementById('heure'), id:'heure'},
+      {el: document.getElementById('telephone'), id:'telephone'},
+    ];
+    return fields.filter(f => !f.el.value.trim());
+  }
+
+  function flashMissing(){
+    const btn = document.getElementById('btn-reserver');
+    btn.classList.add('shake');
+
+    const misses = missingFields();
+    misses.forEach(f => f.el.classList.add('invalid'));
+    const first = misses[0]?.el;
+    if (first) first.scrollIntoView({behavior:'smooth', block:'center'});
+
+    setTimeout(()=>{ btn.classList.remove('shake'); misses.forEach(f => f.el.classList.remove('invalid')); }, 900);
   }
 
   function verifierFormulaire() {
@@ -262,6 +278,9 @@
 
     btnReserver.disabled = !formulaireComplet;
     btnReserver.setAttribute('aria-disabled', !formulaireComplet);
+
+    // Afficher/masquer hint
+    document.getElementById('app').classList.toggle('form-incomplete', !formulaireComplet);
   }
 
   function formatDateFR(isoDate) {
@@ -272,19 +291,16 @@
   }
 
   window.addEventListener('load', () => {
-    emailjs.init("yx7ldLiDmVC_uNq1N"); // Votre public key EmailJS
+    emailjs.init("yx7ldLiDmVC_uNq1N");
     initAutocomplete();
 
     ['autocomplete_depart', 'autocomplete_destination'].forEach(id => {
       document.getElementById(id).addEventListener('input', estimerPrix);
     });
-
-    ['autocomplete_depart','autocomplete_destination','telephone'].forEach(id => {
+    ['autocomplete_depart','autocomplete_destination','telephone','date','heure'].forEach(id => {
       document.getElementById(id).addEventListener('input', verifierFormulaire);
+      document.getElementById(id).addEventListener('change', verifierFormulaire);
     });
-
-    document.getElementById('date').addEventListener('change', verifierFormulaire);
-    document.getElementById('heure').addEventListener('change', verifierFormulaire);
 
     document.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', (event) => {
@@ -300,17 +316,10 @@
     const affichagePersonnes = document.getElementById('nombre-personnes');
 
     document.getElementById('btn-moins').addEventListener('click', () => {
-      if (nombrePersonnes > 1) {
-        nombrePersonnes--;
-        affichagePersonnes.textContent = nombrePersonnes;
-      }
+      if (nombrePersonnes > 1) { nombrePersonnes--; affichagePersonnes.textContent = nombrePersonnes; }
     });
-
     document.getElementById('btn-plus').addEventListener('click', () => {
-      if (nombrePersonnes < 9) {
-        nombrePersonnes++;
-        affichagePersonnes.textContent = nombrePersonnes;
-      }
+      if (nombrePersonnes < 9) { nombrePersonnes++; affichagePersonnes.textContent = nombrePersonnes; }
     });
 
     // PMR toggle
@@ -322,9 +331,16 @@
       estimerPrix();
     });
 
+    // Guard: clic sur bouton désactivé => feedback visuel
+    document.getElementById('btn-guard').addEventListener('click', (e) => {
+      if (document.getElementById('btn-reserver').disabled) {
+        flashMissing();
+      }
+    });
+
     document.getElementById('btn-reserver').addEventListener('click', async () => {
       const btn = document.getElementById('btn-reserver');
-      btn.disabled = true; // éviter les doubles clics
+      btn.disabled = true;
       btn.textContent = "Envoi en cours...";
 
       const prixEstimeText = document.getElementById('prixEstime').textContent;
@@ -337,14 +353,13 @@
         heure: document.getElementById('heure').value,
         telephone: document.getElementById('telephone').value,
         prix: prixEstimeText,
-        nombre_personnes: nombrePersonnes,
+        nombre_personnes: document.getElementById('nombre-personnes')?.textContent || '1',
         pmr: pmrActif ? "oui" : "non"
       };
 
       try {
         await emailjs.send("service_8m9y4b7", "template_jjf7ayv", reservationData);
 
-        // Afficher confirmation locale (pas de Stripe)
         const recapHtml = `
           <div><b>Départ :</b> ${reservationData.lieu_depart}</div>
           <div><b>Destination :</b> ${reservationData.lieu_arrivee}</div>
@@ -356,8 +371,6 @@
           <div><b>Tarif estimé :</b> ${prixCapture ? prixCapture.replace('.', ',') + ' €' : reservationData.prix}</div>
         `;
         document.getElementById('recapitulatif').innerHTML = recapHtml;
-
-        // Masquer l'app et montrer la confirmation
         document.getElementById('app').style.display = 'none';
         document.getElementById('confirmation').style.display = 'block';
 
@@ -369,7 +382,7 @@
       }
     });
 
-    verifierFormulaire();  // vérification initiale
+    verifierFormulaire();  // init
   });
 </script>
 
